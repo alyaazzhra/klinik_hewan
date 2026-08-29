@@ -28,14 +28,12 @@ class CashierController extends Controller
         $pet = Pet::findOrFail($request->pet_id);
         
         // Atur nominal tarif dasar klinik otomatis berdasarkan data pelayanan
-        $biayaLayanan = 0;
-        if ($pet->service == 'Grooming') {
-            $biayaLayanan = 50000;
-        } elseif ($pet->service == 'Rawat Jalan') {
-            $biayaLayanan = 100000;
-        } elseif ($pet->service == 'Rawat Inap') {
-            $biayaLayanan = 250000;
-        }
+        $biayaLayanan = match ($pet->service) {
+            'Grooming'    => 50000,
+            'Rawat Jalan' => 100000,
+            'Rawat Inap'  => 250000,
+            default       => 0,
+        };
 
         $totalBayar = $biayaLayanan + $request->biaya_tambahan;
         $nomorInvoice = 'INV-' . date('Ymd') . '-' . rand(100, 999);
@@ -52,11 +50,8 @@ class CashierController extends Controller
             ]);
         });
 
-        // Dialihkan kembali ke halaman kasir dengan membawa info sukses dan ID Invoice untuk dicetak
-        return redirect()->route('kasir')->with([
-            'success' => 'Transaksi pembayaran kasir berhasil disimpan!',
-            'print_id' => $invoice->id
-        ]);
+        // Redirect langsung ke route cetak struk berdasarkan ID Invoice
+        return redirect()->route('kasir.print', ['id' => $invoice->id]);
     }
 
     // 3. Menampilkan Halaman Khusus Cetak Nota Struk Thermal Mini
@@ -66,14 +61,10 @@ class CashierController extends Controller
         return view('kasir.print', compact('invoice'));
     }
 
-        // 4. BARU: Fungsi untuk menarik seluruh rekapan data riwayat /transactions
+    // 4. Menampilkan Rekapan Data Riwayat /transactions
     public function riwayat()
     {
         $daftarInvoice = Invoice::with('pet.owner')->latest()->get();
-        
-        // PERBAIKAN: Mengubah 'kasir.riwayat' menjadi 'kasir.transaction'
         return view('kasir.transaction', compact('daftarInvoice'));
     }
 }
-
-
